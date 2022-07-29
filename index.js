@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 const { MongoClient, ServerApiVersion , ObjectId} = require('mongodb');
@@ -23,6 +24,7 @@ const client = new MongoClient(uri, {
       await client.connect();
       const productCollection = client.db("motor_parts").collection("products");
       const ordersCollection = client.db("motor_parts").collection("orders");
+      const userCollection = client.db("motor_parts").collection("users");
   
       app.get("/products", async (req, res) => {
         const query = {};
@@ -81,7 +83,19 @@ const client = new MongoClient(uri, {
         );
         res.send(result);
       });
-  
+
+      app.put('/user/:email', async (req, res) => {
+        const email = req.params.email;
+        const user = req.body;
+        const filter = { email: email };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: user,
+        };
+        const result = await userCollection.updateOne(filter, updateDoc, options);
+        const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+        res.send({ result, token });
+      });
       // DELETE
       app.delete('/products/:id', async (req, res) => {
           const id = req.params.id;
