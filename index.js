@@ -18,6 +18,20 @@ const client = new MongoClient(uri, {
     useUnifiedTopology: true,
     serverApi: ServerApiVersion.v1,
   });
+  function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).send({ message: 'UnAuthorized access' });
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+      if (err) {
+        return res.status(403).send({ message: 'Forbidden access' })
+      }
+      req.decoded = decoded;
+      next();
+    });
+  }
 
   async function run() {
     try {
@@ -41,12 +55,16 @@ const client = new MongoClient(uri, {
         res.send(products);
       });
   
-      app.get("/orders", async (req, res) => {
-        const customer= req.query.email;
-        const query = {customer:customer};
-        const cursor = ordersCollection.find(query);
-        const products = await cursor.toArray();
-        res.send(products);
+      app.get("/orders", verifyJWT,async (req, res) => {
+        const email= req.query.email;
+        const decodedEmail = req.decoded.email;
+        if (email === decodedEmail) {
+        const query = {email: email};
+      
+        const order = await ordersCollection.find(query).toArray();
+        res.send(order);
+        }
+        
       });
 
 
@@ -126,4 +144,6 @@ app.get("/", (req, res) => {
 
 app.listen(port, () => {
   console.log("listening");
+
+
 });
