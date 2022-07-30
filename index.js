@@ -39,6 +39,29 @@ const client = new MongoClient(uri, {
       const productCollection = client.db("motor_parts").collection("products");
       const ordersCollection = client.db("motor_parts").collection("orders");
       const userCollection = client.db("motor_parts").collection("users");
+
+
+      const verifyAdmin = async (req, res, next) => {
+        const requester = req.decoded.email;
+        const requesterAccount = await userCollection.findOne({ email: requester });
+        if (requesterAccount.role === 'admin') {
+          next();
+        }
+        else {
+          res.status(403).send({ message: 'forbidden' });
+        }
+      }
+      //get method
+      app.get('/user', verifyJWT, async (req, res) => {
+        const users = await userCollection.find().toArray();
+        res.send(users);
+      });
+      app.get('/admin/:email', async (req, res) => {
+        const email = req.params.email;
+        const user = await userCollection.findOne({ email: email });
+        const isAdmin = user.role === 'admin';
+        res.send({ admin: isAdmin })
+      })
   
       app.get("/products", async (req, res) => {
         const query = {};
@@ -83,6 +106,16 @@ const client = new MongoClient(uri, {
       });
   
       // update product
+      app.put('/user/admin/:email',verifyJWT,verifyAdmin, async (req, res) => {
+        const email = req.params.email;
+        const filter = { email: email };
+        const updateDoc = {
+          $set: { role: 'admin' },
+        };
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      })
+
       app.put("/products/:id", async (req, res) => {
         const id = req.params.id;
         const updatedProduct = req.body;
