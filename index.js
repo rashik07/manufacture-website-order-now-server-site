@@ -39,6 +39,7 @@ const client = new MongoClient(uri, {
       const productCollection = client.db("motor_parts").collection("products");
       const ordersCollection = client.db("motor_parts").collection("orders");
       const userCollection = client.db("motor_parts").collection("users");
+      const reviewCollection = client.db("motor_parts").collection("reviews");
 
 
       const verifyAdmin = async (req, res, next) => {
@@ -102,6 +103,11 @@ const client = new MongoClient(uri, {
       app.post("/products", async (req, res) => {
         const newProduct = req.body;
         const result = await productCollection.insertOne(newProduct);
+        res.send(result);
+      });
+      app.post("/reviews", async (req, res) => {
+        const newReview = req.body;
+        const result = await reviewCollection.insertOne(newReview);
         res.send(result);
       });
 
