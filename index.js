@@ -89,6 +89,12 @@ const client = new MongoClient(uri, {
         }
         
       });
+      app.get('/orders/:id', verifyJWT, async(req, res) =>{
+        const id = req.params.id;
+        const query = {_id: ObjectId(id)};
+        const booking = await ordersCollection.findOne(query);
+        res.send(booking);
+      })
 
 
 
