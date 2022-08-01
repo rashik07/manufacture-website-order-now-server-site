@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 const { MongoClient, ServerApiVersion , ObjectId} = require('mongodb');
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 
 //middleware
@@ -40,6 +40,7 @@ const client = new MongoClient(uri, {
       const ordersCollection = client.db("motor_parts").collection("orders");
       const userCollection = client.db("motor_parts").collection("users");
       const reviewCollection = client.db("motor_parts").collection("reviews");
+      const paymentCollection = client.db("motor_parts").collection("payments");
 
 
       const verifyAdmin = async (req, res, next) => {
@@ -116,7 +117,18 @@ const client = new MongoClient(uri, {
         const result = await ordersCollection.insertOne(newProduct);
         res.send(result);
       });
-  
+
+      app.post('/create-payment-intent', verifyJWT, async(req, res) =>{
+        const product = req.body;
+        const price = product.paid_amount;
+        const amount = price*100;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount : amount,
+          currency: 'usd',
+          payment_method_types:['card']
+        });
+        res.send({clientSecret: paymentIntent.client_secret})
+      });
       // update product
       app.put('/user/admin/:email',verifyJWT,verifyAdmin, async (req, res) => {
         const email = req.params.email;
@@ -159,6 +171,24 @@ const client = new MongoClient(uri, {
         const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
         res.send({ result, token });
       });
+
+      app.patch('/order/:id', verifyJWT, async(req, res) =>{
+        const id  = req.params.id;
+        const payment = req.body;
+        const filter = {_id: ObjectId(id)};
+        const updatedDoc = {
+          $set: {
+            paid: true,
+            transactionId: payment.transactionId
+          }
+        }
+  
+        const result = await paymentCollection.insertOne(payment);
+        const updatedOrder = await ordersCollection.updateOne(filter, updatedDoc);
+        res.send(updatedDoc);
+      })
+
+
       // DELETE
       app.delete('/products/:id', async (req, res) => {
           const id = req.params.id;
