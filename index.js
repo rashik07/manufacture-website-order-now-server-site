@@ -71,6 +71,12 @@ const client = new MongoClient(uri, {
         const products = await cursor.toArray();
         res.send(products);
       });
+      app.get("/reviews", async (req, res) => {
+        const query = {};
+        const cursor = reviewCollection.find(query);
+        const reviews = await cursor.toArray();
+        res.send(reviews);
+      });
   
       app.get("/products/:id", async (req, res) => {
         const id = req.params.id;
